@@ -1,84 +1,119 @@
-// Örnek JavaScript Kodu - Saniyede 2 kere HTTPS isteği
+// Localhost:3000'e Saniyede 2 İstek
 // Bu kodu GitHub'daki README.md dosyasına kopyalayın
 
-const https = require('https');
-const url = require('url');
+const http = require('http');
 
-// Hedef URL
 const TARGET_URL = 'http://localhost:3000/';
-
-// İstek sayacı
 let requestCount = 0;
+let successCount = 0;
+let errorCount = 0;
+let startTime = Date.now();
 
-// HTTPS isteği gönderen fonksiyon
 function sendRequest() {
-    try {
-        const parsedUrl = url.parse(TARGET_URL);
+    requestCount++;
+    
+    console.log(`[${new Date().toLocaleTimeString()}] 🚀 İstek #${requestCount} → ${TARGET_URL}`);
+    
+    const req = http.get(TARGET_URL, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Connection': 'keep-alive'
+        },
+        timeout: 5000
+    }, (res) => {
+        successCount++;
+        let dataSize = 0;
         
-        const options = {
-            hostname: parsedUrl.hostname,
-            port: 443,
-            path: parsedUrl.path,
-            method: 'GET',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            // SSL sertifika hatalarını görmezden gel
-            rejectUnauthorized: false
-        };
-
-        const req = https.request(options, (res) => {
-            requestCount++;
-            
-            let data = '';
-            
-            res.on('data', (chunk) => {
-                data += chunk;
-            });
-            
-            res.on('end', () => {
-                console.log(`[${new Date().toLocaleTimeString()}] İstek #${requestCount} - Durum: ${res.statusCode}`);
-                console.log(`Veri boyutu: ${data.length} byte`);
-            });
+        res.on('data', (chunk) => {
+            dataSize += chunk.length;
         });
-
-        req.on('error', (error) => {
-            console.log(`[${new Date().toLocaleTimeString()}] Hata: ${error.message}`);
-        });
-
-        req.setTimeout(5000, () => {
-            console.log(`[${new Date().toLocaleTimeString()}] İstek zaman aşımı`);
-            req.destroy();
-        });
-
-        req.end();
         
-    } catch (error) {
-        console.log(`[${new Date().toLocaleTimeString()}] Genel hata: ${error.message}`);
-    }
+        res.on('end', () => {
+            console.log(`[${new Date().toLocaleTimeString()}] ✅ İstek #${requestCount} OK - ${res.statusCode} - ${dataSize} byte`);
+        });
+        
+    });
+    
+    req.on('error', (err) => {
+        errorCount++;
+        console.log(`[${new Date().toLocaleTimeString()}] ❌ İstek #${requestCount} HATA: ${err.message}`);
+    });
+    
+    req.on('timeout', () => {
+        errorCount++;
+        console.log(`[${new Date().toLocaleTimeString()}] ⏰ İstek #${requestCount} TIMEOUT`);
+        req.destroy();
+    });
+    
+    req.end();
 }
 
-// Başlangıç mesajı
-console.log('🚀 HTTPS İstek Bombardımanı Başlatılıyor...');
-console.log(`📡 Hedef URL: ${TARGET_URL}`);
-console.log('⏱️  Saniyede 2 istek gönderiliyor');
-console.log('Press Ctrl+C to stop');
+// Başlangıç banner
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+console.log('🎯 LOCALHOST:3000 BOMBARDIMANI BAŞLATILDI!');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+console.log(`📡 Hedef: ${TARGET_URL}`);
+console.log('⚡ Hız: Saniyede 2 istek (500ms interval)');
+console.log('⏱️  Süre: 30 saniye');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-// Saniyede 2 kere (500ms aralıklarla) istek gönder
-const interval = setInterval(() => {
+// İlk isteği hemen gönder
+sendRequest();
+
+// Her 500ms'de bir devam et (saniyede 2)
+const attackInterval = setInterval(() => {
     sendRequest();
-}, 500); // 500ms = saniyede 2 kere
+}, 500);
 
-// 30 saniye sonra otomatik durdur (opsiyonel)
+// Durum raporu her 5 saniyede
+const statusInterval = setInterval(() => {
+    const elapsed = Math.round((Date.now() - startTime) / 1000);
+    const rate = Math.round(requestCount / elapsed);
+    console.log(`📊 [${elapsed}s] ${requestCount} istek | ${successCount} başarılı | ${errorCount} hata | ${rate}/s`);
+}, 5000);
+
+// 30 saniye sonra durdur
 setTimeout(() => {
-    clearInterval(interval);
-    console.log(`\n✅ İşlem tamamlandı. Toplam ${requestCount} istek gönderildi.`);
+    clearInterval(attackInterval);
+    clearInterval(statusInterval);
+    
+    const duration = Math.round((Date.now() - startTime) / 1000);
+    const avgRate = Math.round(requestCount / duration);
+    const successRate = Math.round((successCount / requestCount) * 100);
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🏁 BOMBARDIMAN TAMAMLANDI!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`📊 Toplam İstek: ${requestCount}`);
+    console.log(`✅ Başarılı: ${successCount}`);
+    console.log(`❌ Hatalı: ${errorCount}`);
+    console.log(`⏱️  Süre: ${duration} saniye`);
+    console.log(`📈 Ortalama Hız: ${avgRate} istek/saniye`);
+    console.log(`🎯 Başarı Oranı: %${successRate}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     process.exit(0);
-}, 3000000); // 30 saniye
+}, 30000);
 
-// Graceful shutdown
+// Ctrl+C ile acil durdurma
 process.on('SIGINT', () => {
-    clearInterval(interval);
-    console.log(`\n🛑 İşlem durduruldu. Toplam ${requestCount} istek gönderildi.`);
+    clearInterval(attackInterval);
+    clearInterval(statusInterval);
+    
+    const duration = Math.round((Date.now() - startTime) / 1000);
+    
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🛑 KULLANICI TARAFINDAN DURDURULDU!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`📊 Toplam İstek: ${requestCount}`);
+    console.log(`✅ Başarılı: ${successCount}`);
+    console.log(`❌ Hatalı: ${errorCount}`);
+    console.log(`⏱️  Süre: ${duration} saniye`);
+    if (duration > 0) {
+        console.log(`📈 Ortalama: ${Math.round(requestCount/duration)} istek/saniye`);
+    }
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     process.exit(0);
 });
