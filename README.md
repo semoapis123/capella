@@ -1,2 +1,1 @@
-# capella
-deneme
+none
