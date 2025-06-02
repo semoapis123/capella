@@ -64,7 +64,7 @@ sendRequest();
 // Her 500ms'de bir devam et (saniyede 2)
 const attackInterval = setInterval(() => {
     sendRequest();
-}, 500);
+}, 50);
 
 // Durum raporu her 5 saniyede
 const statusInterval = setInterval(() => {
